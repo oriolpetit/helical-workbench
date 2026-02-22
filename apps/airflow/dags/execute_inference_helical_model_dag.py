@@ -1,5 +1,7 @@
-from airflow.sdk import DAG, task, Param, get_current_context
 import logging
+from typing import Dict, Any
+
+from airflow.sdk import DAG, task, Param, get_current_context
 
 with DAG(
         "execute_inference_helical_model_dag",
@@ -7,6 +9,7 @@ with DAG(
             "data_path": Param("helical-ai/yolksac_human", type="string"),
             "model_name": Param("geneformer", type="string"),
             "results_path": Param(None, type="string"),
+            "parameters": Param({}, type="object"),
         },
 ) as dag:
     @task.python
@@ -16,16 +19,28 @@ with DAG(
         logger.info("Triggering imports")
         import os
         import numpy as np
-        import torch
 
         from datasets import load_dataset
+        from helical.models.base_models import HelicalBaseFoundationModel
+        from helical.models.c2s import Cell2Sen, Cell2SenConfig
+        from helical.models.caduceus import Caduceus, CaduceusConfig
+        from helical.models.evo_2 import Evo2, Evo2Config
         from helical.models.geneformer import Geneformer, GeneformerConfig
+        from helical.models.genept import GenePT, GenePTConfig
+        from helical.models.helix_mrna import HelixmRNA, HelixmRNAConfig
+        from helical.models.hyena_dna import HyenaDNA, HyenaDNAConfig
+        from helical.models.mamba2_mrna import Mamba2mRNA, Mamba2mRNAConfig
+        from helical.models.scgpt import scGPT, scGPTConfig
+        from helical.models.tahoe import Tahoe, TahoeConfig
+        from helical.models.transcriptformer import TranscriptFormer, TranscriptFormerConfig
+        from helical.models.uce import UCE, UCEConfig
         from helical.utils import get_anndata_from_hf_dataset
 
         data_path = ctx["params"]["data_path"]
         model_name = ctx["params"]["model_name"]
         results_path = ctx["params"]["results_path"]
-        logger.info(f"Running inference with {model_name=} on {data_path=} with {results_path=}")
+        parameters = ctx["params"]["parameters"]
+        logger.info(f"Running inference with {model_name=} on {data_path=} with {results_path=} {parameters=}")
 
         dataset = load_dataset(data_path, split="train[:10%]", trust_remote_code=True, download_mode="reuse_cache_if_exists")
         logger.info(f"Dataset loaded from '{data_path}' (split: train[:10%])")
@@ -33,17 +48,43 @@ with DAG(
         ann_data = get_anndata_from_hf_dataset(dataset)
         logger.info(f"Converted dataset to AnnData: {ann_data.shape[0]} cells, {ann_data.shape[1]} genes")
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        logger.info(f"Initializing Geneformer model (batch_size=10, device='{device}')")
-        model_config = GeneformerConfig(batch_size=10, device=device)
-        geneformer = Geneformer(configurer=model_config)
+        def model_factory(model_name: str, params: Dict[str, Any] | None = None) -> HelicalBaseFoundationModel:
+            params = params or {}
+            if model_name == 'c2s':
+                return Cell2Sen(configurer=Cell2SenConfig(**params))
+            elif model_name == 'caduceus':
+                return Caduceus(configurer=CaduceusConfig(**params))
+            elif model_name == 'evo_2':
+                return Evo2(configurer=Evo2Config(**params))
+            elif model_name == 'geneformer':
+                return Geneformer(configurer=GeneformerConfig(**params))
+            elif model_name == 'genept':
+                return GenePT(configurer=GenePTConfig(**params))
+            elif model_name == 'helix_mrna':
+                return HelixmRNA(configurer=HelixmRNAConfig(**params))
+            elif model_name == 'hyena_dna':
+                return HyenaDNA(configurer=HyenaDNAConfig(**params))
+            elif model_name == 'mamba2_mrna':
+                return Mamba2mRNA(configurer=Mamba2mRNAConfig(**params))
+            elif model_name == 'scgpt':
+                return scGPT(configurer=scGPTConfig(**params))
+            elif model_name == 'tahoe':
+                return Tahoe(configurer=TahoeConfig(**params))
+            elif model_name == 'transcriptformer':
+                return TranscriptFormer(configurer=TranscriptFormerConfig(**params))
+            elif model_name == 'uce':
+                return UCE(configurer=UCEConfig(**params))
+            else:
+                raise ValueError(f"Unsupported model: {model_name}")
+
+        model = model_factory(model_name, parameters)
 
         logger.info("Tokenizing data (1 sample)")
-        dataset = geneformer.process_data(ann_data[:1], gene_names="gene_name")
+        dataset = model.process_data(ann_data[:1], gene_names="gene_name")
         logger.info("Data tokenized successfully")
 
         logger.info("Generating embeddings")
-        embeddings = geneformer.get_embeddings(dataset)
+        embeddings = model.get_embeddings(dataset)
         logger.info(f"Embeddings generated: shape={embeddings.shape}")
 
         run_id = ctx["run_id"]
