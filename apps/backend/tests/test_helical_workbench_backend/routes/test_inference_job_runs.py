@@ -100,7 +100,7 @@ class TestCreateInferenceJobRun:
 
     def test_all_valid_models_accepted(self, client, mock_processor):
         mock_processor.trigger_dag_run.return_value = make_job_run()
-        for model_value in ("geneformer", "scgpt", "helix_rna"):
+        for model_value in ("geneformer", "scgpt", "helix_mrna"):
             payload = {"inputs": {"data_path": "s3://x", "model": model_value}}
             response = client.post("/inference_job_runs", json=payload)
             assert response.status_code == 201, f"Failed for model: {model_value}"

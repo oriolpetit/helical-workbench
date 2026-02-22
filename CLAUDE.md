@@ -1,15 +1,16 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this
+repository.
 
 ## Repository Structure
 
-This is a **Turborepo monorepo** with two distinct technology stacks:
+This is a **Turborepo monorepo** with the following apps:
 
-- `apps/web` — Next.js 16 frontend (React 19, TypeScript)
-- `apps/docs` — Next.js documentation site
-- `apps/airflow` — Apache Airflow 3 pipeline for running [Helical](https://github.com/helical-ai/helical) bioinformatics model inference
-- `packages/ui` — Shared React component library (`@repo/ui`)
+- `apps/web` — Next.js 16 frontend (React 19, TypeScript, Mantine 8)
+- `apps/backend` — FastAPI backend bridging the web UI and Airflow pipeline
+- `apps/airflow` — Apache Airflow 3 pipeline for
+  running [Helical](https://github.com/helical-ai/helical) bioinformatics model inference
 - `packages/eslint-config` — Shared ESLint config (`@repo/eslint-config`)
 - `packages/typescript-config` — Shared TypeScript config (`@repo/typescript-config`)
 
@@ -23,33 +24,49 @@ npm run build        # Build all apps
 npm run lint         # Lint all packages
 npm run check-types  # Type-check all packages
 npm run format       # Prettier format all TS/TSX/MD files
+npm run release    # Run build, check-types, test, and lint (full release check)
 ```
 
 Run for a specific app (e.g., web only):
 
 ```bash
 npx turbo run dev --filter=web
-npx turbo run build --filter=web
 ```
 
-## Airflow (Python) Commands
+## Backend (Python — FastAPI)
 
-The Airflow app uses **uv** for dependency management and **Docker Compose** for local execution. Python version is pinned in `apps/airflow/.python-version`.
+`apps/backend` is a FastAPI app using **uv**. Runs on port 8000.
+
+After changing the API, regenerate the TypeScript client used by `apps/web`:
 
 ```bash
-# Start the full Airflow stack (from repo root or apps/airflow)
-docker compose up --build
+# From apps/backend
+npm run generate-openapi          # Exports build/openapi_spec.json
 
-# Or from repo root (docker-compose.yaml includes the airflow compose file)
+# From apps/web
+npm run generate-backend-ts-client  # Writes typed client to app/services/backend/
+```
+
+The generated client in `apps/web/app/services/backend/` should be committed alongside API changes.
+
+## Airflow (Python)
+
+The Airflow app uses **uv** for dependency management and **Docker Compose** for local execution.
+Python version is pinned in `apps/airflow/.python-version`.
+
+```bash
+# Start the full stack (from repo root)
 docker compose up --build
 ```
 
-The Airflow UI is available at `http://localhost:8080` (default credentials: `airflow`/`airflow`).
+The Airflow UI is available at `http://localhost:8080` (credentials: `airflow`/`airflow`).
 
-To add Python dependencies available inside Docker containers, edit `apps/airflow/docker-requirements.txt` (used in the Docker image build). The `pyproject.toml` is for local development with uv.
+To add Python dependencies for Docker, edit `apps/airflow/requirements.txt` (generated from
+`pyproject.toml` via `uv export`) and rebuild. For local dev, edit `pyproject.toml` and run
+`uv sync`.
 
 ```bash
-# Local dev environment (uv)
+# Local dev
 cd apps/airflow
 uv sync
 uv run python main.py
@@ -57,12 +74,28 @@ uv run python main.py
 
 ## Architecture Notes
 
+### Backend
+
+Layered design: `Routes → Service → Client`
+
+- **Routes** (`api/routes/`) — HTTP layer, request validation, response serialisation
+- **Service** (`services/`) — business logic, job state management
+- **Client** (`clients/`) — Airflow REST API integration
+
+Key env vars: `AIRFLOW_HOST`, `AIRFLOW_USERNAME`, `AIRFLOW_PASSWORD`, `RESULTS_DIR`. Results are
+shared with the Airflow container via a Docker volume.
+
 ### Airflow DAGs
 
-DAGs live in `apps/airflow/dags/`. The primary DAG (`execute_inference_helical_model_dag`) runs Helical genomic model inference (currently Geneformer) on HuggingFace datasets and writes embeddings to `dags/files/output.csv`. Heavy imports (torch, helical, datasets) are done inside the task function to avoid DAG parse-time overhead.
+DAGs live in `apps/airflow/dags/`. The primary DAG (`execute_inference_helical_model_dag`) runs
+Helical genomic model inference on HuggingFace datasets and writes embeddings as CSV to
+`results/<run_id>.csv`. Heavy imports (torch, helical, datasets) are done inside task functions to
+avoid DAG parse-time overhead.
 
-The Airflow stack uses CeleryExecutor with Redis as broker and PostgreSQL as backend. The custom Docker image extends `apache/airflow:3.1.7-python3.10` and installs `helical` from `docker-requirements.txt`.
+The stack uses CeleryExecutor with Redis as broker and PostgreSQL as backend. The custom Docker
+image extends `apache/airflow:3.1.7-python3.10`.
 
-### Shared UI Package
+### Web Frontend
 
-`packages/ui` exports React components (`button`, `card`, `code`) consumed by `apps/web` and `apps/docs` via the `@repo/ui` workspace alias.
+`apps/web` is a static Next.js export served by Nginx in Docker. `NEXT_PUBLIC_API_URL` is baked in
+at build time (defaults to `http://localhost:8000`).

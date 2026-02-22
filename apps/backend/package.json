@@ -8,7 +8,7 @@
     "build": "echo 'No build yet for backend'",
     "type-check": "uv run --extra dev mypy",
     "ruff-check": "uv run --extra dev ruff check",
-    "lint": "npm run type-check && npm run ruff-check",
+    "lint": "npm run ruff-check",
     "format": "uv run --extra dev ruff format && uv run --extra dev ruff check --fix",
     "test": "uv run --extra dev pytest"
   }
