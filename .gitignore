@@ -39,6 +39,7 @@ yarn-error.log*
 *.pem
 .idea/
 *.iml
+*.egg-info/
 
 # airflow pkg
 apps/airflow/logs/

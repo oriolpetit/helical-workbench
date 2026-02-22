@@ -18,6 +18,14 @@ const ThemeImage = (props: Props) => {
   );
 };
 
+
+import { client } from "./services/backend/client.gen";
+import { listInferenceJobRunsInferenceJobRunsGet } from "./services/backend";
+
+client.setConfig({ baseUrl: "http://localhost:8000" });
+const jobs = await listInferenceJobRunsInferenceJobRunsGet();
+
+
 export default function Home() {
   return (
     <div className={styles.page}>
@@ -34,6 +42,7 @@ export default function Home() {
         <ol>
           <li>
             Get started by editing <code>apps/web/app/page.tsx</code>
+            {"" + JSON.stringify(jobs)}
           </li>
           <li>Save and see your changes instantly.</li>
         </ol>

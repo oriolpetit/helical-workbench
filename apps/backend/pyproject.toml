@@ -38,3 +38,7 @@ src = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

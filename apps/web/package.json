@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
-    "check-types": "next typegen && tsc --noEmit"
+    "check-types": "next typegen && tsc --noEmit",
+    "generate-backend-ts-client": "npx @hey-api/openapi-ts --input ../../apps/backend/build/openapi_spec.json --output app/services/backend --client @hey-api/client-fetch"
   },
   "dependencies": {
     "next": "16.1.5",
@@ -16,6 +17,8 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@hey-api/client-fetch": "^0.13.1",
+    "@hey-api/openapi-ts": "^0.92.4",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@types/node": "^22.15.3",
