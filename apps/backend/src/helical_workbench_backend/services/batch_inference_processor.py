@@ -115,13 +115,15 @@ class BatchInferenceProcessor:
                 parameters=conf.get("parameters", {}),
             )
             result.append(_dag_run_to_job_run(dag_run, inputs))
-        return result
+        return sorted(result, key=lambda r: r.started_at, reverse=True)
 
     def get_dag_run_results(self, dag_run_id: str) -> Path:
         status = self.get_dag_run_status(dag_run_id)
         if status.status != JobRunStatus.SUCCEEDED:
             raise HTTPException(status_code=404, detail="Results not available yet")
-        full_result_path = Path(self._config.results_dir) / status.result_path
+        full_result_path = Path(self._config.results_dir) / Path(
+            status.result_path or ""
+        )
         if full_result_path.exists() and full_result_path.is_file():
             return full_result_path
         else:

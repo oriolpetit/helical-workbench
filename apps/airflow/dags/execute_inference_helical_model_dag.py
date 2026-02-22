@@ -23,15 +23,12 @@ with DAG(
         from datasets import load_dataset
         from helical.models.base_models import HelicalBaseFoundationModel
         from helical.models.c2s import Cell2Sen, Cell2SenConfig
-        from helical.models.caduceus import Caduceus, CaduceusConfig
-        from helical.models.evo_2 import Evo2, Evo2Config
         from helical.models.geneformer import Geneformer, GeneformerConfig
         from helical.models.genept import GenePT, GenePTConfig
         from helical.models.helix_mrna import HelixmRNA, HelixmRNAConfig
         from helical.models.hyena_dna import HyenaDNA, HyenaDNAConfig
         from helical.models.mamba2_mrna import Mamba2mRNA, Mamba2mRNAConfig
         from helical.models.scgpt import scGPT, scGPTConfig
-        from helical.models.tahoe import Tahoe, TahoeConfig
         from helical.models.transcriptformer import TranscriptFormer, TranscriptFormerConfig
         from helical.models.uce import UCE, UCEConfig
         from helical.utils import get_anndata_from_hf_dataset
@@ -52,10 +49,6 @@ with DAG(
             params = params or {}
             if model_name == 'c2s':
                 return Cell2Sen(configurer=Cell2SenConfig(**params))
-            elif model_name == 'caduceus':
-                return Caduceus(configurer=CaduceusConfig(**params))
-            elif model_name == 'evo_2':
-                return Evo2(configurer=Evo2Config(**params))
             elif model_name == 'geneformer':
                 return Geneformer(configurer=GeneformerConfig(**params))
             elif model_name == 'genept':
@@ -68,8 +61,6 @@ with DAG(
                 return Mamba2mRNA(configurer=Mamba2mRNAConfig(**params))
             elif model_name == 'scgpt':
                 return scGPT(configurer=scGPTConfig(**params))
-            elif model_name == 'tahoe':
-                return Tahoe(configurer=TahoeConfig(**params))
             elif model_name == 'transcriptformer':
                 return TranscriptFormer(configurer=TranscriptFormerConfig(**params))
             elif model_name == 'uce':

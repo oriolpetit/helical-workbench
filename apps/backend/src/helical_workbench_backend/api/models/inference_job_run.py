@@ -6,9 +6,15 @@ from pydantic import BaseModel
 
 
 class Model(str, Enum):
+    C2S = "c2s"
     GENEFORMER = "geneformer"
+    GENEPT = "genept"
+    HELIX_MRNA = "helix_mrna"
+    HYENA_DNA = "hyena_dna"
+    MAMBA2_MRNA = "mamba2_mrna"
     SC_GPT = "scgpt"
-    HELIX_RNA = "helix_rna"
+    TRANSCRIPTFORMER = "transcriptformer"
+    UCE = "uce"
 
 
 class JobRunStatus(str, Enum):
