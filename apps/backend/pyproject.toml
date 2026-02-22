@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "apache-airflow-client>=3.1.6",
     "fastapi[standard]>=0.129.2",
+    "requests>=2.32.5",
 ]
 
 [tool.setuptools.packages.find]
