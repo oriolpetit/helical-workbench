@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "uv run fastapi dev ./src/helical_workbench_backend/main.py",
     "build": "echo 'No build yet for backend'",
-    "lint": "echo 'No lint for backend'"
+    "type-check": "uv run --extra dev mypy",
+    "ruff-check": "uv run --extra dev ruff check",
+    "lint": "npm run type-check && npm run ruff-check",
+    "format": "uv run --extra dev ruff format && uv run --extra dev ruff check --fix",
+    "test": "uv run --extra dev pytest"
   }
 }
