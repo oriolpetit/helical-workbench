@@ -1,0 +1,10 @@
+{
+  "name": "airflow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "docker compose up --build",
+    "build": "docker compose build",
+    "lint": "echo 'No lint for airflow'"
+  }
+}
