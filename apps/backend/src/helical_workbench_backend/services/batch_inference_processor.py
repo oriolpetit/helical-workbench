@@ -1,9 +1,13 @@
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from airflow_client.client import DAGRunResponse, TriggerDAGRunPostBody
 from airflow_client.client.api.dag_run_api import DagRunApi
+from fastapi import HTTPException
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 from helical_workbench_backend.api.models.inference_job_run import (
     InferenceJobRun,
@@ -25,6 +29,13 @@ _AIRFLOW_STATE_MAP = {
 }
 
 
+class BatchInferenceProcessorConfig(BaseSettings):
+    results_dir: str = Field(
+        default="./../airflow/results", validation_alias="RESULTS_DIR"
+    )
+    model_config = {"populate_by_name": True}
+
+
 def _dag_run_to_job_run(
     dag_run: DAGRunResponse, inputs: InferenceJobRunInputs
 ) -> InferenceJobRun:
@@ -37,7 +48,7 @@ def _dag_run_to_job_run(
         or dag_run.logical_date
         or datetime.now(timezone.utc),
         finished_at=dag_run.end_date,
-        result_path="dags/files/output.csv"
+        result_path=f"{dag_run.dag_run_id}/embeddings.csv"
         if state == JobRunStatus.SUCCEEDED
         else None,
         error=dag_run.note if state == JobRunStatus.FAILED else None,
@@ -45,11 +56,19 @@ def _dag_run_to_job_run(
 
 
 class BatchInferenceProcessor:
-    def __init__(self, airflow_client: AuthnAirflowClient):
+    def __init__(
+        self,
+        airflow_client: AuthnAirflowClient,
+        config: BatchInferenceProcessorConfig | None = None,
+    ):
         self._airflow_client = airflow_client
+        self._config = config or BatchInferenceProcessorConfig()
 
     def trigger_dag_run(self, job_create: InferenceJobRunCreate) -> InferenceJobRun:
         dag_run_id = f"api__{uuid.uuid4()}"
+        job_create.inputs.results_path = (
+            job_create.inputs.results_path or f"{dag_run_id}/embeddings.csv"
+        )
         with self._airflow_client as api_client:
             dag_run_api = DagRunApi(api_client)
             dag_run = dag_run_api.trigger_dag_run(
@@ -73,6 +92,7 @@ class BatchInferenceProcessor:
         inputs = InferenceJobRunInputs(
             data_path=conf.get("data_path", ""),
             model=conf.get("model", "geneformer"),
+            results_path=conf.get("results_path"),
             parameters=conf.get("parameters", {}),
         )
         return _dag_run_to_job_run(dag_run, inputs)
@@ -91,7 +111,18 @@ class BatchInferenceProcessor:
             inputs = InferenceJobRunInputs(
                 data_path=conf.get("data_path", ""),
                 model=conf.get("model", "geneformer"),
+                results_path=conf.get("results_path"),
                 parameters=conf.get("parameters", {}),
             )
             result.append(_dag_run_to_job_run(dag_run, inputs))
         return result
+
+    def get_dag_run_results(self, dag_run_id: str) -> Path:
+        status = self.get_dag_run_status(dag_run_id)
+        if status.status != JobRunStatus.SUCCEEDED:
+            raise HTTPException(status_code=404, detail="Results not available yet")
+        full_result_path = Path(self._config.results_dir) / status.result_path
+        if full_result_path.exists() and full_result_path.is_file():
+            return full_result_path
+        else:
+            raise HTTPException(status_code=404, detail="Results not available")

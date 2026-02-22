@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import HTTPException
 
 from helical_workbench_backend.api.models.inference_job_run import (
     InferenceJobRun,
@@ -12,6 +13,7 @@ from helical_workbench_backend.api.models.inference_job_run import (
 )
 from helical_workbench_backend.services.batch_inference_processor import (
     INFERENCE_DAG_ID,
+    BatchInferenceProcessorConfig,
     _dag_run_to_job_run,
 )
 
@@ -46,11 +48,11 @@ def make_dag_run_response(
 
 class TestDagRunToJobRun:
     def test_success_state_sets_result_path(self):
-        dag_run = make_dag_run_response(state="success")
+        dag_run = make_dag_run_response(dag_run_id="run-123", state="success")
         inputs = InferenceJobRunInputs(data_path="s3://x", model=Model.GENEFORMER)
         result = _dag_run_to_job_run(dag_run, inputs)
         assert result.status == JobRunStatus.SUCCEEDED
-        assert result.result_path == "dags/files/output.csv"
+        assert result.result_path == "run-123/embeddings.csv"
         assert result.error is None
 
     def test_failed_state_sets_error_from_note(self):
@@ -207,3 +209,101 @@ class TestListDagRuns:
         processor.list_dag_runs(status=None)
         call_kwargs = mock_dag_run_api.get_dag_runs.call_args
         assert "state" not in (call_kwargs.kwargs or {})
+
+    def test_reconstructs_results_path_from_conf(self, processor, mock_dag_run_api):
+        dag_run = make_dag_run_response(
+            conf={
+                "data_path": "s3://x",
+                "model": "geneformer",
+                "results_path": "run-1/embeddings.csv",
+                "parameters": {},
+            }
+        )
+        mock_dag_run_api.get_dag_runs.return_value.dag_runs = [dag_run]
+        result = processor.list_dag_runs()
+        assert result[0].inputs.results_path == "run-1/embeddings.csv"
+
+
+class TestTriggerDagRunResultsPath:
+    def test_conf_contains_auto_generated_results_path(
+        self, processor, mock_dag_run_api
+    ):
+        mock_dag_run_api.trigger_dag_run.return_value = make_dag_run_response()
+        job_create = InferenceJobRunCreate(
+            inputs=InferenceJobRunInputs(
+                data_path="s3://bucket/data", model=Model.GENEFORMER
+            )
+        )
+        processor.trigger_dag_run(job_create)
+        body = mock_dag_run_api.trigger_dag_run.call_args.kwargs[
+            "trigger_dag_run_post_body"
+        ]
+        assert "results_path" in body.conf
+        assert body.conf["results_path"].endswith("/embeddings.csv")
+
+    def test_explicit_results_path_is_preserved(self, processor, mock_dag_run_api):
+        mock_dag_run_api.trigger_dag_run.return_value = make_dag_run_response()
+        job_create = InferenceJobRunCreate(
+            inputs=InferenceJobRunInputs(
+                data_path="s3://bucket/data",
+                model=Model.GENEFORMER,
+                results_path="custom/path.csv",
+            )
+        )
+        processor.trigger_dag_run(job_create)
+        body = mock_dag_run_api.trigger_dag_run.call_args.kwargs[
+            "trigger_dag_run_post_body"
+        ]
+        assert body.conf["results_path"] == "custom/path.csv"
+
+
+class TestGetDagRunResults:
+    def test_returns_path_when_succeeded_and_file_exists(
+        self, mock_dag_run_api, tmp_path
+    ):
+        from helical_workbench_backend.services.batch_inference_processor import (
+            BatchInferenceProcessor,
+        )
+
+        result_file = tmp_path / "run-123" / "embeddings.csv"
+        result_file.parent.mkdir(parents=True)
+        result_file.write_text("1.0,2.0")
+
+        config = BatchInferenceProcessorConfig(results_dir=str(tmp_path))
+        processor = BatchInferenceProcessor(airflow_client=MagicMock(), config=config)
+
+        dag_run = make_dag_run_response(dag_run_id="run-123", state="success")
+        mock_dag_run_api.get_dag_run.return_value = dag_run
+
+        result = processor.get_dag_run_results("run-123")
+        assert result == tmp_path / "run-123" / "embeddings.csv"
+
+    def test_raises_404_when_job_not_succeeded(self, mock_dag_run_api, tmp_path):
+        from helical_workbench_backend.services.batch_inference_processor import (
+            BatchInferenceProcessor,
+        )
+
+        config = BatchInferenceProcessorConfig(results_dir=str(tmp_path))
+        processor = BatchInferenceProcessor(airflow_client=MagicMock(), config=config)
+
+        dag_run = make_dag_run_response(dag_run_id="run-123", state="running")
+        mock_dag_run_api.get_dag_run.return_value = dag_run
+
+        with pytest.raises(HTTPException) as exc_info:
+            processor.get_dag_run_results("run-123")
+        assert exc_info.value.status_code == 404
+
+    def test_raises_404_when_file_does_not_exist(self, mock_dag_run_api, tmp_path):
+        from helical_workbench_backend.services.batch_inference_processor import (
+            BatchInferenceProcessor,
+        )
+
+        config = BatchInferenceProcessorConfig(results_dir=str(tmp_path))
+        processor = BatchInferenceProcessor(airflow_client=MagicMock(), config=config)
+
+        dag_run = make_dag_run_response(dag_run_id="run-123", state="success")
+        mock_dag_run_api.get_dag_run.return_value = dag_run
+
+        with pytest.raises(HTTPException) as exc_info:
+            processor.get_dag_run_results("run-123")
+        assert exc_info.value.status_code == 404

@@ -1,6 +1,8 @@
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from starlette.responses import FileResponse
 
 from helical_workbench_backend.api.dependencies.airflow import get_batch_processor
 from helical_workbench_backend.api.models.inference_job_run import (
@@ -10,6 +12,8 @@ from helical_workbench_backend.api.models.inference_job_run import (
 from helical_workbench_backend.services.batch_inference_processor import (
     BatchInferenceProcessor,
 )
+
+RESULTS_DIR = os.environ.get("RESULTS_DIR", "/app/results")
 
 router = APIRouter(prefix="/inference_job_runs", tags=["inference_job_runs"])
 
@@ -36,3 +40,12 @@ def get_inference_job_run(
     processor: BatchInferenceProcessor = Depends(get_batch_processor),
 ) -> InferenceJobRun:
     return processor.get_dag_run_status(job_run_id)
+
+
+@router.get("/{job_run_id}/results", response_model=list[list[float]])
+def get_inference_job_run_results(
+    job_run_id: str,
+    processor: BatchInferenceProcessor = Depends(get_batch_processor),
+) -> FileResponse:
+    job_results = processor.get_dag_run_results(job_run_id)
+    return FileResponse(job_results)

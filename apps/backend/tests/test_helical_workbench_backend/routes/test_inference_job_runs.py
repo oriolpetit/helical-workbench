@@ -117,3 +117,28 @@ class TestGetInferenceJobRun:
         mock_processor.get_dag_run_status.return_value = make_job_run()
         client.get("/inference_job_runs/my-specific-run-id")
         mock_processor.get_dag_run_status.assert_called_once_with("my-specific-run-id")
+
+
+class TestGetInferenceJobRunResults:
+    def test_returns_200_with_file_contents(self, client, mock_processor, tmp_path):
+        result_file = tmp_path / "embeddings.csv"
+        result_file.write_text("0.1,0.2,0.3")
+        mock_processor.get_dag_run_results.return_value = result_file
+        response = client.get("/inference_job_runs/run-123/results")
+        assert response.status_code == 200
+
+    def test_passes_job_run_id_to_processor(self, client, mock_processor, tmp_path):
+        result_file = tmp_path / "embeddings.csv"
+        result_file.write_text("0.1,0.2")
+        mock_processor.get_dag_run_results.return_value = result_file
+        client.get("/inference_job_runs/run-456/results")
+        mock_processor.get_dag_run_results.assert_called_once_with("run-456")
+
+    def test_propagates_404_when_processor_raises(self, client, mock_processor):
+        from fastapi import HTTPException
+
+        mock_processor.get_dag_run_results.side_effect = HTTPException(
+            status_code=404, detail="Results not available yet"
+        )
+        response = client.get("/inference_job_runs/run-123/results")
+        assert response.status_code == 404

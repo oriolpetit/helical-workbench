@@ -14,8 +14,11 @@ services:
       context: apps/backend
     environment:
         - AIRFLOW_HOST=http://airflow-apiserver:8080
+        - RESULTS_DIR=/app/results
     ports:
       - "8000:8000"
+    volumes:
+      - ./apps/airflow/results:/app/results
     depends_on:
       airflow-apiserver:
         condition: service_healthy

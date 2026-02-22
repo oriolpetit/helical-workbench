@@ -21,6 +21,7 @@ class JobRunStatus(str, Enum):
 class InferenceJobRunInputs(BaseModel):
     data_path: str
     model: Model
+    results_path: str | None = None
     parameters: dict[str, Any] = {}
 
 
