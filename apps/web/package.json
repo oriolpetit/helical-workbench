@@ -12,6 +12,9 @@
     "generate-backend-ts-client": "npx @hey-api/openapi-ts --input ../../apps/backend/build/openapi_spec.json --output app/services/backend --client @hey-api/client-fetch"
   },
   "dependencies": {
+    "@mantine/core": "^8.3.15",
+    "@mantine/form": "^8.3.15",
+    "@mantine/hooks": "^8.3.15",
     "next": "16.1.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

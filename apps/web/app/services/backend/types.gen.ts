@@ -82,7 +82,7 @@ export type JobRunStatus = 'pending' | 'running' | 'succeeded' | 'failed';
 /**
  * Model
  */
-export type Model = 'geneformer' | 'scgpt' | 'helix_rna';
+export type Model = 'c2s' | 'geneformer' | 'genept' | 'helix_mrna' | 'hyena_dna' | 'mamba2_mrna' | 'scgpt' | 'transcriptformer' | 'uce';
 
 /**
  * ValidationError
