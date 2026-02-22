@@ -1,0 +1,19 @@
+include:
+  - ./apps/airflow/docker-compose.yaml
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:80"
+
+  backend:
+    build:
+      context: apps/backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      airflow-apiserver:
+        condition: service_healthy
