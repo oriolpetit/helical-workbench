@@ -12,6 +12,8 @@ services:
   backend:
     build:
       context: apps/backend
+    environment:
+        - AIRFLOW_HOST=http://airflow-apiserver:8080
     ports:
       - "8000:8000"
     depends_on:
