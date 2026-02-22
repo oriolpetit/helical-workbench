@@ -1,0 +1,10 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run fastapi dev ./src/helical_workbench_backend/main.py",
+    "build": "echo 'No build yet for backend'",
+    "lint": "echo 'No lint for backend'"
+  }
+}
