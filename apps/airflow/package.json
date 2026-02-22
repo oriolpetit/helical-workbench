@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "docker compose up --build",
-    "build": "docker compose build",
-    "lint": "echo 'No lint for airflow'"
+    "dev": "npm run generate-docker-requiremnts && docker compose up --build",
+    "build": "npm run generate-docker-requiremnts && docker compose build",
+    "lint": "echo 'No lint for airflow'",
+    "generate-docker-requiremnts": "uv export --no-dev --no-hashes -o requirements.txt"
   }
 }
