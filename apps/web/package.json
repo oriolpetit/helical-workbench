@@ -1,11 +1,11 @@
 {
-  "name": "web",
+  "name": "@repo/web",
   "version": "0.1.0",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "next build",
+    "build": "npm run generate-backend-ts-client && next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit",
@@ -24,6 +24,7 @@
     "@hey-api/openapi-ts": "^0.92.4",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "@repo/backend": "*",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",

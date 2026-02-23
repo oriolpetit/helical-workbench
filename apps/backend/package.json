@@ -1,11 +1,11 @@
 {
-  "name": "backend",
+  "name": "@repo/backend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "uv run fastapi dev ./src/helical_workbench_backend/main.py",
     "generate-openapi": "uv run ./bin/export_openapi_spec.py",
-    "build": "echo 'No build yet for backend'",
+    "build": "npm run generate-openapi",
     "type-check": "uv run --extra dev mypy",
     "ruff-check": "uv run --extra dev ruff check",
     "lint": "npm run ruff-check",

@@ -1,5 +1,5 @@
 {
-  "name": "airflow",
+  "name": "@repo/airflow",
   "version": "0.1.0",
   "private": true,
   "scripts": {
