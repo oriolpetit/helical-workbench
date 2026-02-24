@@ -9,6 +9,7 @@ COPY package.json package-lock.json ./
 COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY apps/web/package.json ./apps/web/
+COPY apps/backend/build/openapi_spec.json ./apps/backend/build/
 
 RUN npm ci
 
@@ -16,7 +17,7 @@ RUN npm ci
 COPY packages/ ./packages/
 COPY apps/web/ ./apps/web/
 
-RUN npm run build --workspace=web
+RUN npm run build --workspace="@repo/web"
 
 # Stage 2: serve with nginx
 FROM nginx:alpine
